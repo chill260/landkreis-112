@@ -76,6 +76,8 @@ const templates=[
 ];
 
 const cap={fire:'🔥 Brand',rescue:'🛠 Rettung',medical:'❤️ Medizin',ladder:'🪜 Leiter',command:'📻 Führung'};
+const SIM_TIME_SCALE=6;
+const geocodeCache=new Map();
 let vehicles=[],incidents=[],selected='i1',chosen=[],speed=1,paused=false,serial=2,money=2500,rep=62,clock=8*3600+12*60;
 let map;
 const stationMarkers=new Map(),incidentMarkers=new Map(),vehicleMarkers=new Map(),routeLines=new Map();
@@ -117,6 +119,7 @@ function initLayout(){
    incidents.push(n);selected=n.id;chosen=[];
    map.panTo([n.lat,n.lng]);
    render();
+   resolveIncidentAddress(n);
  };
  setTimeout(()=>map.invalidateSize(),100);
 }
@@ -133,11 +136,47 @@ function reset(){
  incidents=[make(0,1)];
  selected='i1';chosen=[];speed=1;paused=false;serial=2;money=2500;rep=62;clock=8*3600+12*60;
  render();
+ resolveIncidentAddress(incidents[0]);
 }
 
 function make(n,id){
- const[t,title,address,lat,lng,req,need,report]=templates[n%templates.length];
- return{id:'i'+id,t,title,address,lat,lng,req:{...req},need,work:0,age:0,status:'open',stage:0,log:[{text:report,tone:''}]};
+ const[t,title,_address,lat,lng,req,need,report]=templates[n%templates.length];
+ return{id:'i'+id,t,title,address:'Adresse wird ermittelt…',lat,lng,req:{...req},need,work:0,age:0,status:'open',stage:0,log:[{text:report,tone:''}]};
+}
+
+function formatOsmAddress(data,incident){
+ const a=data&&data.address?data.address:{};
+ const road=a.road||a.pedestrian||a.residential||a.footway||a.cycleway||a.path||a.neighbourhood||a.suburb;
+ const house=a.house_number;
+ const place=a.city||a.town||a.village||a.municipality||a.county;
+ if(road&&house&&place)return road+' '+house+', '+place;
+ if(road&&place)return road+', '+place;
+ if(place)return place+' · '+incident.lat.toFixed(5)+', '+incident.lng.toFixed(5);
+ return incident.lat.toFixed(5)+', '+incident.lng.toFixed(5);
+}
+
+async function resolveIncidentAddress(incident){
+ if(!incident)return;
+ const key=incident.lat.toFixed(5)+','+incident.lng.toFixed(5);
+ if(geocodeCache.has(key)){
+   incident.address=geocodeCache.get(key);
+   render();
+   return;
+ }
+ try{
+   const url='https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=18&addressdetails=1&lat='+
+     encodeURIComponent(incident.lat)+'&lon='+encodeURIComponent(incident.lng);
+   const res=await fetch(url,{headers:{'Accept-Language':'de'}});
+   if(!res.ok)throw new Error('Geocoding HTTP '+res.status);
+   const data=await res.json();
+   const address=formatOsmAddress(data,incident);
+   geocodeCache.set(key,address);
+   incident.address=address;
+ }catch(err){
+   incident.address='Koordinaten '+incident.lat.toFixed(5)+', '+incident.lng.toFixed(5);
+   incident.log.push({text:'Adresse konnte nicht geladen werden. Koordinaten werden angezeigt.',tone:'warn'});
+ }
+ render();
 }
 
 function availableCaps(i){
@@ -323,7 +362,10 @@ function metersBetween(a,b){
 
 function moveAlongRoute(v,step){
  if(!v.route||v.routeIndex>=v.route.length)return true;
- let remaining=18*step*30;
+ const avgSpeed=(v.routeDistance>0&&v.routeDuration>0)
+   ? v.routeDistance/v.routeDuration
+   : 12;
+ let remaining=avgSpeed*step*SIM_TIME_SCALE;
  while(remaining>0&&v.routeIndex<v.route.length){
    const target=v.route[v.routeIndex];
    const d=metersBetween(v,target);
@@ -358,7 +400,7 @@ function moveAlongRoute(v,step){
 
 function tick(dt){
  if(paused)return;
- const step=dt*speed;clock+=step*30;
+ const step=dt*speed;clock+=step*SIM_TIME_SCALE;
 
  vehicles.forEach(v=>{
    if(v.status==='go'){
