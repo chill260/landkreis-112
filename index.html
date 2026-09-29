@@ -78,7 +78,7 @@ const templates=[
 const cap={fire:'🔥 Brand',rescue:'🛠 Rettung',medical:'❤️ Medizin',ladder:'🪜 Leiter',command:'📻 Führung'};
 let vehicles=[],incidents=[],selected='i1',chosen=[],speed=1,paused=false,serial=2,money=2500,rep=62,clock=8*3600+12*60;
 let map;
-const stationMarkers=new Map(),incidentMarkers=new Map(),vehicleMarkers=new Map();
+const stationMarkers=new Map(),incidentMarkers=new Map(),vehicleMarkers=new Map(),routeLines=new Map();
 const app=document.querySelector('#app');
 const S=id=>stations.find(x=>x.id===id);
 const I=()=>incidents.find(x=>x.id===selected)||incidents[0];
@@ -128,7 +128,7 @@ function icon(type,emoji,extra=''){
 function reset(){
  vehicles=base.map(([id,type,call,station,caps])=>{
    const s=S(station);
-   return{id,type,call,station,caps,lat:s.lat,lng:s.lng,status:'free',target:null};
+   return{id,type,call,station,caps,lat:s.lat,lng:s.lng,status:'free',target:null,route:null,routeIndex:0,routeDistance:0,routeDuration:0};
  });
  incidents=[make(0,1)];
  selected='i1';chosen=[];speed=1;paused=false;serial=2;money=2500;rep=62;clock=8*3600+12*60;
@@ -179,6 +179,21 @@ function syncMap(){
    }
    m.setLatLng([v.lat,v.lng]);
    m.setIcon(icon('unit',emoji,v.status));
+
+   let line=routeLines.get(v.id);
+   if(v.route&&v.route.length>1){
+     const latlngs=v.route.map(p=>[p.lat,p.lng]);
+     if(!line){
+       line=L.polyline(latlngs,{weight:4,opacity:.72,dashArray:v.status==='back'?'7 7':null}).addTo(map);
+       routeLines.set(v.id,line);
+     }else{
+       line.setLatLngs(latlngs);
+       line.setStyle({dashArray:v.status==='back'?'7 7':null});
+     }
+   }else if(line){
+     line.remove();
+     routeLines.delete(v.id);
+   }
  });
 }
 
@@ -217,7 +232,7 @@ function detail(i,caps){
   ${vehicles.map(v=>`<button class="veh ${chosen.includes(v.id)?'sel':''} ${v.status!=='free'?'busy':''}" data-veh="${v.id}" ${v.status!=='free'?'disabled':''}>
     <span class="check">${chosen.includes(v.id)?'✓':''}</span>
     <span class="vmain"><strong>${v.type}</strong><small>${v.call} · ${S(v.station).name}</small></span>
-    <small>${v.status==='free'?'frei':v.status==='go'?'Anfahrt':v.status==='scene'?'vor Ort':'Rückfahrt'}</small>
+    <small>${v.status==='free'?'frei':v.status==='routing'?'Route…':v.status==='go'?'Anfahrt':v.status==='scene'?'vor Ort':'Rückfahrt'}</small>
   </button>`).join('')}
  </div><button class="dispatch" id="dispatchBtn" ${!chosen.length?'disabled':''}>📻 ALARMIEREN (${chosen.length})</button></div>`;
 }
@@ -237,20 +252,107 @@ function bindUi(){
  const d=document.querySelector('#dispatchBtn');if(d)d.onclick=dispatch;
 }
 
-function dispatch(){
- const i=I();if(!i)return;
- chosen.forEach(id=>{const v=vehicles.find(x=>x.id===id);if(v&&v.status==='free'){v.status='go';v.target=i.id}});
- i.log.push({text:chosen.length+' Fahrzeug(e) alarmiert.',tone:''});
- chosen=[];render();
+async function fetchRoute(from,to){
+ const url='https://router.project-osrm.org/route/v1/driving/'+
+   from.lng+','+from.lat+';'+to.lng+','+to.lat+
+   '?overview=full&geometries=geojson&steps=false';
+ const res=await fetch(url);
+ if(!res.ok)throw new Error('Routing HTTP '+res.status);
+ const data=await res.json();
+ if(data.code!=='Ok'||!data.routes||!data.routes[0])throw new Error(data.code||'Keine Route');
+ const r=data.routes[0];
+ return{
+   points:r.geometry.coordinates.map(([lng,lat])=>({lat,lng})),
+   distance:r.distance,
+   duration:r.duration
+ };
 }
 
-function moveToward(v,target,step){
- const d=dist(v,target);
- if(d<0.00025){v.lat=target.lat;v.lng=target.lng;return true}
- const max=0.0016*step;
- const ratio=Math.min(1,max/d);
- v.lat+=(target.lat-v.lat)*ratio;
- v.lng+=(target.lng-v.lng)*ratio;
+async function planRoute(v,to,status,incident){
+ v.status='routing';
+ v.route=null;
+ v.routeIndex=0;
+ render();
+ try{
+   const r=await fetchRoute({lat:v.lat,lng:v.lng},to);
+   v.route=r.points;
+   v.routeIndex=1;
+   v.routeDistance=r.distance;
+   v.routeDuration=r.duration;
+   v.status=status;
+   if(incident&&status==='go'){
+     incident.log.push({
+       text:v.call+': Route berechnet · '+(r.distance/1000).toFixed(1)+' km · ca. '+Math.max(1,Math.round(r.duration/60))+' min.',
+       tone:''
+     });
+   }
+ }catch(err){
+   v.route=[{lat:v.lat,lng:v.lng},{lat:to.lat,lng:to.lng}];
+   v.routeIndex=1;
+   v.routeDistance=0;
+   v.routeDuration=0;
+   v.status=status;
+   if(incident){
+     incident.log.push({text:v.call+': Routing nicht erreichbar, direkte Ersatzroute aktiv.',tone:'warn'});
+   }
+ }
+ render();
+}
+
+function dispatch(){
+ const i=I();if(!i)return;
+ const ids=[...chosen];
+ ids.forEach(id=>{
+   const v=vehicles.find(x=>x.id===id);
+   if(v&&v.status==='free'){
+     v.target=i.id;
+     planRoute(v,i,'go',i);
+   }
+ });
+ i.log.push({text:ids.length+' Fahrzeug(e) alarmiert. Straßenrouten werden berechnet.',tone:''});
+ chosen=[];
+ render();
+}
+
+function metersBetween(a,b){
+ const lat=(a.lat+b.lat)*Math.PI/360;
+ const dy=(b.lat-a.lat)*111320;
+ const dx=(b.lng-a.lng)*111320*Math.cos(lat);
+ return Math.hypot(dx,dy);
+}
+
+function moveAlongRoute(v,step){
+ if(!v.route||v.routeIndex>=v.route.length)return true;
+ let remaining=18*step*30;
+ while(remaining>0&&v.routeIndex<v.route.length){
+   const target=v.route[v.routeIndex];
+   const d=metersBetween(v,target);
+   if(d<2){
+     v.lat=target.lat;
+     v.lng=target.lng;
+     v.routeIndex++;
+     continue;
+   }
+   if(d<=remaining){
+     v.lat=target.lat;
+     v.lng=target.lng;
+     v.routeIndex++;
+     remaining-=d;
+   }else{
+     const ratio=remaining/d;
+     v.lat+=(target.lat-v.lat)*ratio;
+     v.lng+=(target.lng-v.lng)*ratio;
+     remaining=0;
+   }
+ }
+ if(v.routeIndex>=v.route.length){
+   const last=v.route[v.route.length-1];
+   v.lat=last.lat;
+   v.lng=last.lng;
+   v.route=null;
+   v.routeIndex=0;
+   return true;
+ }
  return false;
 }
 
@@ -262,10 +364,15 @@ function tick(dt){
    if(v.status==='go'){
      const i=incidents.find(x=>x.id===v.target);
      if(!i||i.status==='done')return;
-     if(moveToward(v,i,step))v.status='scene';
+     if(moveAlongRoute(v,step)){
+       v.status='scene';
+       i.log.push({text:v.call+' an der Einsatzstelle eingetroffen.',tone:''});
+     }
    }else if(v.status==='back'){
-     const s=S(v.station);
-     if(moveToward(v,s,step)){v.status='free';v.target=null}
+     if(moveAlongRoute(v,step)){
+       v.status='free';
+       v.target=null;
+     }
    }
  });
 
@@ -287,7 +394,10 @@ function tick(dt){
    }
    if(i.work>=i.need){
      i.status='done';i.log.push({text:'Einsatz beendet. Maßnahmen abgeschlossen.',tone:'good'});
-     vehicles.filter(v=>v.target===i.id&&v.status==='scene').forEach(v=>v.status='back');
+     vehicles.filter(v=>v.target===i.id&&v.status==='scene').forEach(v=>{
+       const s=S(v.station);
+       planRoute(v,s,'back',null);
+     });
      money+=250;rep=Math.min(100,rep+1);
    }
  });
