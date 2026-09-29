@@ -28,6 +28,10 @@ button{font:inherit}
 .veh.sel{border-color:#5b91df;background:#172941}.veh.busy{opacity:.45;cursor:default}.check{width:20px;height:20px;border:1px solid #53637a;border-radius:4px;display:grid;place-items:center}.vmain{flex:1}.vmain strong,.vmain small{display:block}.vmain small{font-size:9px;color:#8392a8}
 .dispatch{width:100%;margin-top:9px;padding:12px;border-radius:8px;border:1px solid #6ca1ef;background:#2e6dbc;color:white;font-weight:900;cursor:pointer}.dispatch:disabled{opacity:.35;cursor:default}
 .log{max-height:180px;overflow:auto;font-size:11px}.msg{padding:7px 0;border-bottom:1px solid #202a39}.warn{color:#f5bd62}.danger{color:#ff8787}.good{color:#77d79a}
+.tabs{display:flex;gap:6px;margin-bottom:12px}.tabs button{flex:1;border:1px solid #344258;background:#141d2c;color:#aab8cb;padding:8px;border-radius:7px;font-weight:800}.tabs button.on{background:#244b7c;color:#fff;border-color:#5388c9}
+.riskbar,.progressbar{height:9px;background:#202b3a;border-radius:99px;overflow:hidden;margin-top:6px}.riskfill,.progressfill{height:100%;background:#d66b49}.progressfill{background:#4c91e6}.riskrow{display:flex;justify-content:space-between;font-size:11px;margin-top:10px}.risklow{color:#78d79b}.riskmid{color:#f2bd65}.riskhigh{color:#ff7c7c}
+.decision{background:#171f2d;border:1px solid #46536a;border-radius:10px;padding:10px;margin-top:10px}.decision strong{display:block;margin-bottom:5px}.choice{display:block;width:100%;text-align:left;margin-top:7px;padding:9px;border-radius:8px;border:1px solid #3a4e69;background:#16243a;color:#eaf2ff}.choice:hover{background:#1c3150}.choice small{display:block;color:#98a8bd;margin-top:3px}
+.stationcard,.upgrade{background:#151e2b;border:1px solid #303d51;border-radius:9px;padding:10px;margin-bottom:8px}.stationcard h3,.upgrade h3{font-size:13px;margin:0 0 5px}.metric{display:flex;justify-content:space-between;font-size:11px;color:#aab7c7;margin-top:4px}.upgrade button{width:100%;margin-top:8px;padding:8px;border:1px solid #4c6d96;border-radius:7px;background:#213c60;color:#fff;font-weight:800}.upgrade button:disabled{opacity:.35}.goal{background:#132338;border:1px solid #35557d;border-radius:9px;padding:9px;margin-bottom:10px}.goal strong{font-size:12px}.goal small{display:block;color:#93a5bb;margin-top:4px}.badge{display:inline-block;padding:2px 5px;border-radius:4px;background:#26354a;color:#b9c9dc;font-size:9px;margin-right:4px}
 .map-badge{position:absolute;z-index:500;top:10px;left:50%;transform:translateX(-50%);background:#101827e8;border:1px solid #3c4b62;border-radius:8px;padding:6px 9px;font-size:11px;pointer-events:none}
 .leaflet-control-attribution{font-size:9px!important}
 .game-icon{background:transparent!important;border:0!important}
@@ -68,22 +72,46 @@ const base=[
 ];
 
 const templates=[
- ['B2','Rauchentwicklung aus Gebäude','Lindenstraße 8',52.3728,9.7425,{fire:3,rescue:1,medical:1},110,'Mehrere Anrufer melden Rauch aus einem Wohnhaus.'],
- ['TH Y','VU – Person eingeklemmt','Kreisstraße 17',52.3845,9.7840,{rescue:3,medical:2},100,'PKW gegen Baum. Eine Person ist eingeschlossen.'],
- ['B1','Mülleimerbrand','Schulweg 4',52.3558,9.7105,{fire:1},55,'Müllcontainer brennt auf einem Parkplatz.'],
- ['H1','Person hinter Tür','Am Markt 12',52.3872,9.7355,{rescue:1,medical:1},65,'Hilferufe aus einer verschlossenen Wohnung.'],
- ['B2','Kellerbrand','Eichenring 31',52.3615,9.7710,{fire:4,rescue:1,medical:1},125,'Starke Rauchentwicklung aus Kellerfenstern.']
+ {code:'B2',title:'Rauchentwicklung aus Gebäude',lat:52.3728,lng:9.7425,req:{fire:3,rescue:1,medical:1},need:120,risk:34,reward:900,xp:150,report:'Mehrere Anrufer melden Rauch aus einem Wohnhaus.',
+  decision:{prompt:'Eine Person wird noch in der Wohnung vermutet. Wie soll vorgegangen werden?',choices:[
+   {label:'Innenangriff sofort',hint:'Schneller Fortschritt, aber höheres Risiko.',work:34,risk:12,log:'Angriffstrupp geht sofort zur Menschenrettung vor.'},
+   {label:'Nachbarwehr nachfordern',hint:'Kostet 350 €, dafür zusätzliche Löschkräfte nach kurzer Zeit.',risk:-10,cost:350,support:{eta:90,caps:{fire:2,rescue:1}},log:'Überörtliche Kräfte sind nachalarmiert.'}
+  ]}},
+ {code:'TH Y',title:'VU – Person eingeklemmt',lat:52.3845,lng:9.7840,req:{rescue:3,medical:2},need:115,risk:28,reward:1050,xp:170,report:'PKW gegen Baum. Eine Person ist eingeschlossen.',
+  decision:{prompt:'Der Patient ist ansprechbar, klagt aber über starke Schmerzen.',choices:[
+   {label:'Schnelle Rettung einleiten',hint:'Beschleunigt die Befreiung, erhöht aber das medizinische Risiko.',work:30,risk:14,log:'Schnelle technische Rettung wird eingeleitet.'},
+   {label:'Notarzt nachfordern',hint:'Kostet 300 €, senkt das Risiko und bringt medizinische Unterstützung.',risk:-16,cost:300,support:{eta:60,caps:{medical:2}},log:'Notarzt ist nachgefordert.'}
+  ]}},
+ {code:'B1',title:'Mülleimerbrand',lat:52.3558,lng:9.7105,req:{fire:1},need:58,risk:16,reward:430,xp:75,report:'Müllcontainer brennt auf einem Parkplatz.',
+  decision:{prompt:'Das Feuer steht nah an einer Fassade.',choices:[
+   {label:'Direkt ablöschen',hint:'Schnell, mit leichtem Risiko einer Ausbreitung.',work:24,risk:7,log:'Trupp beginnt sofort mit der Brandbekämpfung.'},
+   {label:'Fassade zuerst kontrollieren',hint:'Etwas langsamer, senkt aber das Risiko deutlich.',need:14,risk:-13,log:'Fassade wird kontrolliert und gekühlt.'}
+  ]}},
+ {code:'H1',title:'Person hinter Tür',lat:52.3872,lng:9.7355,req:{rescue:1,medical:1},need:75,risk:24,reward:620,xp:100,report:'Hilferufe aus einer verschlossenen Wohnung.',
+  decision:{prompt:'Die Tür ist verschlossen, die Person antwortet nur noch schwach.',choices:[
+   {label:'Tür gewaltsam öffnen',hint:'Schneller Zugang, höheres Schadensrisiko.',work:28,risk:8,log:'Gewaltsame Türöffnung wird durchgeführt.'},
+   {label:'Schonende Öffnung versuchen',hint:'Weniger Schaden, aber der Einsatz dauert länger.',need:18,risk:-6,log:'Schonende Türöffnung wird vorbereitet.'}
+  ]}},
+ {code:'B2',title:'Kellerbrand',lat:52.3615,lng:9.7710,req:{fire:4,rescue:1,medical:1},need:145,risk:40,reward:1150,xp:190,report:'Starke Rauchentwicklung aus Kellerfenstern.',
+  decision:{prompt:'Der Treppenraum ist stark verraucht, die Wasserversorgung ist noch nicht gesichert.',choices:[
+   {label:'Mit Tankwasser vorgehen',hint:'Schneller Angriff, aber die Reserve ist knapp.',work:38,risk:15,log:'Innenangriff startet mit dem vorhandenen Tankwasser.'},
+   {label:'Wasserversorgung zuerst sichern',hint:'Langsamer, dafür deutlich sicherer.',need:20,risk:-18,log:'Wasserversorgung wird aufgebaut, Angriff verzögert sich.'}
+  ]}}
 ];
 
 const cap={fire:'🔥 Brand',rescue:'🛠 Rettung',medical:'❤️ Medizin',ladder:'🪜 Leiter',command:'📻 Führung'};
 const SIM_TIME_SCALE=6;
 const geocodeCache=new Map();
-let vehicles=[],incidents=[],selected='i1',chosen=[],speed=1,paused=false,serial=2,money=2500,rep=62,clock=8*3600+12*60;
+let vehicles=[],incidents=[],selected='i1',chosen=[],speed=1,paused=false,serial=2,money=7500,rep=64,clock=8*3600+12*60;
+let xp=0,completed=0,failed=0,rightMode='incident',nextIncidentAt=clock+420,upgrades={agt:false,crew:false,hlf:false,rtw:false};
 let map;
 const stationMarkers=new Map(),incidentMarkers=new Map(),vehicleMarkers=new Map(),routeLines=new Map();
 const app=document.querySelector('#app');
 const S=id=>stations.find(x=>x.id===id);
 const I=()=>incidents.find(x=>x.id===selected)||incidents[0];
+const level=()=>1+Math.floor(xp/500);
+const levelProgress=()=>xp%500;
+const clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
 const dist=(a,b)=>Math.hypot(a.lat-b.lat,(a.lng-b.lng)*0.62);
 
 function initLayout(){
@@ -91,14 +119,14 @@ function initLayout(){
  <div class="app">
   <header class="top">
    <div class="logo">🚨</div>
-   <div class="brand">LANDKREIS 112<span class="sub">Leitstelle Sonnenfels · OSM-Prototyp 0.2</span></div>
+   <div class="brand">LANDKREIS 112<span class="sub">Leitstelle Sonnenfels · Leitstellen-Tycoon · Prototyp 0.3</span></div>
    <div class="stats" id="stats"></div>
    <div class="controls" id="controls"></div>
   </header>
   <main class="grid">
    <aside class="panel"><div class="head"><h2>Einsätze</h2><button class="btn small" id="newIncident">+ Neu</button></div><div class="incidents" id="incidentList"></div></aside>
    <section class="mapwrap"><div id="map" class="map"></div><div class="map-badge">🗺️ Reale OSM-Karte · fiktive Einsatzlagen</div></section>
-   <aside class="panel detail" id="detail"></aside>
+   <aside class="panel detail"><div class="tabs"><button id="tabIncident" class="on">Einsatz</button><button id="tabManage">Ausbau</button></div><div id="detail"></div></aside>
   </main>
  </div>`;
 
@@ -129,19 +157,28 @@ function icon(type,emoji,extra=''){
 }
 
 function reset(){
+ stations.forEach(s=>{
+   if(s.id==='a'){s.crew=14;s.maxCrew=14;s.agt=4;s.maxAgt=4}
+   if(s.id==='b'){s.crew=10;s.maxCrew=10;s.agt=4;s.maxAgt=4}
+   if(s.id==='c'){s.crew=4;s.maxCrew=4;s.agt=0;s.maxAgt=0}
+ });
  vehicles=base.map(([id,type,call,station,caps])=>{
    const s=S(station);
-   return{id,type,call,station,caps,lat:s.lat,lng:s.lng,status:'free',target:null,route:null,routeIndex:0,routeDistance:0,routeDuration:0};
+   const personnel=type==='HLF 20'||type==='LF 10'?{crew:6,agt:4}:type==='DLK 23/12'?{crew:2,agt:0}:type==='RTW'?{crew:2,agt:0}:{crew:2,agt:0};
+   return{id,type,call,station,caps:{...caps},personnel,lat:s.lat,lng:s.lng,status:'free',target:null,route:null,routeIndex:0,routeDistance:0,routeDuration:0,reserved:false};
  });
  incidents=[make(0,1)];
- selected='i1';chosen=[];speed=1;paused=false;serial=2;money=2500;rep=62;clock=8*3600+12*60;
+ selected='i1';chosen=[];speed=1;paused=false;serial=2;money=7500;rep=64;clock=8*3600+12*60;
+ xp=0;completed=0;failed=0;rightMode='incident';nextIncidentAt=clock+420;upgrades={agt:false,crew:false,hlf:false,rtw:false};
  render();
  resolveIncidentAddress(incidents[0]);
 }
 
 function make(n,id){
- const[t,title,_address,lat,lng,req,need,report]=templates[n%templates.length];
- return{id:'i'+id,t,title,address:'Adresse wird ermittelt…',lat,lng,req:{...req},need,work:0,age:0,status:'open',stage:0,log:[{text:report,tone:''}]};
+ const t=templates[n%templates.length];
+ return{id:'i'+id,t:t.code,title:t.title,address:'Adresse wird ermittelt…',lat:t.lat,lng:t.lng,req:{...t.req},need:t.need,work:0,age:0,status:'open',stage:0,
+   risk:t.risk,reward:t.reward,xp:t.xp,decision:t.decision,decisionMade:false,support:null,supportArrived:false,
+   log:[{text:t.report,tone:''}]};
 }
 
 function formatOsmAddress(data,incident){
@@ -182,7 +219,28 @@ async function resolveIncidentAddress(incident){
 function availableCaps(i){
  const o={};
  vehicles.filter(v=>v.target===i.id&&v.status==='scene').forEach(v=>Object.entries(v.caps).forEach(([k,n])=>o[k]=(o[k]||0)+n));
+ if(i.supportArrived&&i.support&&i.support.caps)Object.entries(i.support.caps).forEach(([k,n])=>o[k]=(o[k]||0)+n);
  return o;
+}
+
+function crewAvailable(v){
+ const s=S(v.station);
+ return s.crew>=v.personnel.crew&&s.agt>=v.personnel.agt;
+}
+
+function reserveCrew(v){
+ if(v.reserved)return true;
+ const s=S(v.station);
+ if(!crewAvailable(v))return false;
+ s.crew-=v.personnel.crew;s.agt-=v.personnel.agt;v.reserved=true;return true;
+}
+
+function releaseCrew(v){
+ if(!v.reserved)return;
+ const s=S(v.station);
+ s.crew=Math.min(s.maxCrew,s.crew+v.personnel.crew);
+ s.agt=Math.min(s.maxAgt,s.agt+v.personnel.agt);
+ v.reserved=false;
 }
 
 function syncMap(){
@@ -237,58 +295,144 @@ function syncMap(){
 }
 
 function render(){
- const i=I(),caps=i?availableCaps(i):{},open=incidents.filter(x=>x.status!=='done').length;
+ const i=I(),caps=i?availableCaps(i):{},open=incidents.filter(x=>x.status==='open').length;
  const time=new Date(clock*1000).toISOString().slice(11,16);
+ const countdown=Math.max(0,Math.ceil((nextIncidentAt-clock)/60));
 
  document.querySelector('#stats').innerHTML=
-   `<span class="pill">🕒 ${time}</span><span class="pill">⚠️ ${open} offen</span><span class="pill">👥 ${rep}%</span><span class="pill">€ ${money}</span>`;
+   '<span class="pill">🕒 '+time+'</span>'+
+   '<span class="pill">⚠️ '+open+' offen</span>'+
+   '<span class="pill">⭐ Lvl '+level()+'</span>'+
+   '<span class="pill">👥 '+rep+'%</span>'+
+   '<span class="pill">€ '+money+'</span>'+
+   '<span class="pill">📟 '+countdown+' min</span>';
 
  document.querySelector('#controls').innerHTML=
-   `<button id="pauseBtn">${paused?'▶':'⏸'}</button>${[1,2,4].map(x=>`<button data-speed="${x}" class="${!paused&&speed===x?'on':''}">${x}×</button>`).join('')}<button id="resetBtn">↻</button>`;
+   '<button id="pauseBtn">'+(paused?'▶':'⏸')+'</button>'+
+   [1,2,4].map(x=>'<button data-speed="'+x+'" class="'+(!paused&&speed===x?'on':'')+'">'+x+'×</button>').join('')+
+   '<button id="resetBtn">↻</button>';
 
  document.querySelector('#incidentList').innerHTML=incidents.map(x=>
-   `<button class="incident ${x.id===selected?'sel':''} ${x.status==='done'?'done':''}" data-inc="${x.id}">
-      <div class="row"><span class="code">${x.t}</span><small>${Math.floor(x.age/60)}:${String(Math.floor(x.age%60)).padStart(2,'0')}</small></div>
-      <strong>${x.title}</strong><div class="addr">📍 ${x.address}</div>
-    </button>`).join('');
+   '<button class="incident '+(x.id===selected?'sel ':'')+(x.status!=='open'?'done':'')+'" data-inc="'+x.id+'">'+
+      '<div class="row"><span class="code">'+x.t+'</span><small>'+Math.floor(x.age/60)+':'+String(Math.floor(x.age%60)).padStart(2,'0')+'</small></div>'+
+      '<strong>'+x.title+'</strong>'+
+      '<div class="addr">📍 '+x.address+'</div>'+
+      '<div class="riskrow"><span>Gefahr</span><b class="'+(x.risk<40?'risklow':x.risk<70?'riskmid':'riskhigh')+'">'+Math.round(x.risk)+'%</b></div>'+
+      '<div class="riskbar"><div class="riskfill" style="width:'+clamp(x.risk,0,100)+'%"></div></div>'+
+    '</button>').join('');
 
- document.querySelector('#detail').innerHTML=i?detail(i,caps):'<h2>Kein Einsatz</h2>';
+ document.querySelector('#tabIncident').classList.toggle('on',rightMode==='incident');
+ document.querySelector('#tabManage').classList.toggle('on',rightMode==='manage');
+ document.querySelector('#detail').innerHTML=rightMode==='manage'?managementView():(i?detail(i,caps):'<h2>Kein Einsatz</h2>');
 
  bindUi();
  syncMap();
 }
 
 function detail(i,caps){
- return `
- <span class="code">${i.t}</span><h2>${i.title}</h2><div class="muted">📍 ${i.address}</div>
- <div class="section"><strong>Anforderungen</strong><div class="reqs">
-  ${Object.entries(i.req).map(([k,n])=>`<div class="req ${(caps[k]||0)>=n?'ok':''}"><span>${cap[k]}</span><b>${caps[k]||0} / ${n}</b></div>`).join('')}
- </div></div>
- <div class="section"><strong>Lagemeldungen</strong><div class="log">
-  ${[...i.log].reverse().map(x=>`<div class="msg ${x.tone}">${x.text}</div>`).join('')}
- </div></div>
- <div class="section"><strong>Fahrzeuge alarmieren</strong><div class="vehicles">
-  ${vehicles.map(v=>`<button class="veh ${chosen.includes(v.id)?'sel':''} ${v.status!=='free'?'busy':''}" data-veh="${v.id}" ${v.status!=='free'?'disabled':''}>
-    <span class="check">${chosen.includes(v.id)?'✓':''}</span>
-    <span class="vmain"><strong>${v.type}</strong><small>${v.call} · ${S(v.station).name}</small></span>
-    <small>${v.status==='free'?'frei':v.status==='routing'?'Route…':v.status==='go'?'Anfahrt':v.status==='scene'?'vor Ort':'Rückfahrt'}</small>
-  </button>`).join('')}
- </div><button class="dispatch" id="dispatchBtn" ${!chosen.length?'disabled':''}>📻 ALARMIEREN (${chosen.length})</button></div>`;
+ const riskClass=i.risk<40?'risklow':i.risk<70?'riskmid':'riskhigh';
+ const decision=(i.stage>=1&&!i.decisionMade&&i.status==='open'&&i.decision)?
+   '<div class="decision"><strong>⚡ Entscheidung erforderlich</strong><div class="muted">'+i.decision.prompt+'</div>'+
+   i.decision.choices.map((ch,idx)=>'<button class="choice" data-choice="'+idx+'" '+(ch.cost&&ch.cost>money?'disabled':'')+'><b>'+ch.label+'</b><small>'+ch.hint+(ch.cost?' · '+ch.cost+' €':'')+'</small></button>').join('')+
+   '</div>':'';
+ return '<span class="code">'+i.t+'</span><h2>'+i.title+'</h2><div class="muted">📍 '+i.address+'</div>'+
+ '<div class="riskrow"><span>Gefahrenentwicklung</span><b class="'+riskClass+'">'+Math.round(i.risk)+'%</b></div><div class="riskbar"><div class="riskfill" style="width:'+clamp(i.risk,0,100)+'%"></div></div>'+
+ decision+
+ '<div class="section"><strong>Anforderungen</strong><div class="reqs">'+
+  Object.entries(i.req).map(([k,n])=>'<div class="req '+((caps[k]||0)>=n?'ok':'')+'"><span>'+cap[k]+'</span><b>'+(caps[k]||0)+' / '+n+'</b></div>').join('')+
+ '</div></div>'+
+ '<div class="section"><strong>Lagemeldungen</strong><div class="log">'+
+  [...i.log].reverse().map(x=>'<div class="msg '+x.tone+'">'+x.text+'</div>').join('')+
+ '</div></div>'+
+ '<div class="section"><strong>Fahrzeuge alarmieren</strong><div class="vehicles">'+
+  vehicles.map(v=>{
+    const staffed=crewAvailable(v);
+    return '<button class="veh '+(chosen.includes(v.id)?'sel ':'')+(v.status!=='free'||!staffed?'busy':'')+'" data-veh="'+v.id+'" '+(v.status!=='free'||!staffed?'disabled':'')+'>'+
+    '<span class="check">'+(chosen.includes(v.id)?'✓':'')+'</span>'+
+    '<span class="vmain"><strong>'+v.type+'</strong><small>'+v.call+' · '+S(v.station).name+' · 👥'+v.personnel.crew+(v.personnel.agt?' · 🫁'+v.personnel.agt:'')+'</small></span>'+
+    '<small>'+(v.status==='free'?(staffed?'frei':'Personal fehlt'):v.status==='routing'?'Route…':v.status==='go'?'Anfahrt':v.status==='scene'?'vor Ort':'Rückfahrt')+'</small></button>';
+  }).join('')+
+ '</div><button class="dispatch" id="dispatchBtn" '+(!chosen.length?'disabled':'')+'>📻 ALARMIEREN ('+chosen.length+')</button></div>';
+}
+
+function managementView(){
+ return '<div class="goal"><strong>🎯 Schichtziel: 6 Einsätze erfolgreich abschließen</strong><small>'+completed+' / 6 geschafft · '+failed+' fehlgeschlagen</small>'+
+ '<div class="progressbar"><div class="progressfill" style="width:'+Math.min(100,completed/6*100)+'%"></div></div></div>'+
+ '<div class="goal"><strong>⭐ Erfahrungsstufe '+level()+'</strong><small>'+levelProgress()+' / 500 XP bis zur nächsten Stufe</small>'+
+ '<div class="progressbar"><div class="progressfill" style="width:'+(levelProgress()/5)+'%"></div></div></div>'+
+ '<h2>Wachen & Personal</h2>'+
+ stations.map(s=>'<div class="stationcard"><h3>'+s.name+'</h3><div class="metric"><span>Verfügbares Personal</span><b>'+s.crew+' / '+s.maxCrew+'</b></div>'+
+ '<div class="metric"><span>Atemschutzgeräteträger</span><b>'+s.agt+' / '+s.maxAgt+'</b></div></div>').join('')+
+ '<h2>Investitionen</h2>'+
+ upgradeCard('agt','🫁 AGT-Ausbildung','+2 Atemschutzgeräteträger in Sonnenfels.',2500)+
+ upgradeCard('crew','👨‍🚒 Mitgliederwerbung','+4 Einsatzkräfte in Eichenrode.',1800)+
+ upgradeCard('hlf','🚒 HLF-Aufrüstung','HLF erhält +1 Brand und +1 technische Rettung.',3200)+
+ upgradeCard('rtw','🚑 Zusätzlicher RTW','Ein dritter RTW wird in Dienst gestellt.',5200);
+}
+
+function upgradeCard(id,title,desc,cost){
+ const done=upgrades[id];
+ return '<div class="upgrade"><h3>'+title+'</h3><div class="muted">'+desc+'</div><button data-upgrade="'+id+'" '+(done||money<cost?'disabled':'')+'>'+(done?'✓ Bereits gekauft':cost+' € investieren')+'</button></div>';
 }
 
 function bindUi(){
+ document.querySelector('#tabIncident').onclick=()=>{rightMode='incident';render()};
+ document.querySelector('#tabManage').onclick=()=>{rightMode='manage';render()};
  document.querySelectorAll('[data-inc]').forEach(e=>e.onclick=()=>{
-   selected=e.dataset.inc;chosen=[];
+   selected=e.dataset.inc;chosen=[];rightMode='incident';
    const i=I();if(i)map.panTo([i.lat,i.lng]);
    render();
  });
  document.querySelectorAll('[data-veh]').forEach(e=>e.onclick=()=>{
    const id=e.dataset.veh;chosen=chosen.includes(id)?chosen.filter(x=>x!==id):[...chosen,id];render();
  });
+ document.querySelectorAll('[data-choice]').forEach(e=>e.onclick=()=>chooseDecision(+e.dataset.choice));
+ document.querySelectorAll('[data-upgrade]').forEach(e=>e.onclick=()=>buyUpgrade(e.dataset.upgrade));
  document.querySelectorAll('[data-speed]').forEach(e=>e.onclick=()=>{speed=+e.dataset.speed;paused=false;render()});
  document.querySelector('#pauseBtn').onclick=()=>{paused=!paused;render()};
  document.querySelector('#resetBtn').onclick=reset;
  const d=document.querySelector('#dispatchBtn');if(d)d.onclick=dispatch;
+}
+
+function chooseDecision(idx){
+ const i=I();if(!i||i.decisionMade||!i.decision)return;
+ const ch=i.decision.choices[idx];if(!ch)return;
+ if(ch.cost&&ch.cost>money)return;
+ if(ch.cost)money-=ch.cost;
+ i.work+=ch.work||0;
+ i.need+=ch.need||0;
+ i.risk=clamp(i.risk+(ch.risk||0),0,100);
+ if(ch.support)i.support={eta:ch.support.eta,caps:{...ch.support.caps},label:ch.label};
+ i.decisionMade=true;
+ i.log.push({text:ch.log,tone:ch.risk>0?'warn':'good'});
+ render();
+}
+
+function buyUpgrade(id){
+ if(upgrades[id])return;
+ const cost={agt:2500,crew:1800,hlf:3200,rtw:5200}[id];
+ if(money<cost)return;
+ money-=cost;upgrades[id]=true;
+ if(id==='agt'){const s=S('a');s.agt+=2;s.maxAgt+=2}
+ if(id==='crew'){const s=S('b');s.crew+=4;s.maxCrew+=4}
+ if(id==='hlf'){const v=vehicles.find(v=>v.id==='h');v.caps.fire++;v.caps.rescue++}
+ if(id==='rtw'){
+   const s=S('c');
+   s.crew+=2;s.maxCrew+=2;
+   vehicles.push({id:'r3',type:'RTW',call:'Rettung 1-83-3',station:'c',caps:{medical:3},personnel:{crew:2,agt:0},lat:s.lat,lng:s.lng,status:'free',target:null,route:null,routeIndex:0,routeDistance:0,routeDuration:0,reserved:false});
+ }
+ render();
+}
+
+function spawnIncident(){
+ if(incidents.filter(i=>i.status==='open').length>=4){nextIncidentAt=clock+180;return}
+ const idx=Math.floor(Math.random()*templates.length);
+ const n=make(idx,serial++);
+ incidents.push(n);
+ selected=n.id;
+ rightMode='incident';
+ nextIncidentAt=clock+360+Math.floor(Math.random()*240);
+ resolveIncidentAddress(n);
 }
 
 async function fetchRoute(from,to){
@@ -343,7 +487,7 @@ function dispatch(){
  const ids=[...chosen];
  ids.forEach(id=>{
    const v=vehicles.find(x=>x.id===id);
-   if(v&&v.status==='free'){
+   if(v&&v.status==='free'&&reserveCrew(v)){
      v.target=i.id;
      planRoute(v,i,'go',i);
    }
@@ -398,14 +542,37 @@ function moveAlongRoute(v,step){
  return false;
 }
 
+function finishIncident(i,success){
+ if(i.status!=='open')return;
+ i.status=success?'done':'failed';
+ if(success){
+   i.log.push({text:'Einsatz beendet. Maßnahmen erfolgreich abgeschlossen.',tone:'good'});
+   money+=i.reward;xp+=i.xp;completed++;rep=Math.min(100,rep+2);
+ }else{
+   i.log.push({text:'Einsatz außer Kontrolle. Hoher Schaden und Reputationsverlust.',tone:'danger'});
+   money=Math.max(0,money-500);failed++;rep=Math.max(0,rep-8);
+ }
+ vehicles.filter(v=>v.target===i.id&&(v.status==='scene'||v.status==='go'||v.status==='routing')).forEach(v=>{
+   const s=S(v.station);
+   if(v.status==='scene')planRoute(v,s,'back',null);
+   else{
+     v.route=null;v.routeIndex=0;planRoute(v,s,'back',null);
+   }
+ });
+}
+
 function tick(dt){
  if(paused)return;
- const step=dt*speed;clock+=step*SIM_TIME_SCALE;
+ const step=dt*speed;
+ const simStep=step*SIM_TIME_SCALE;
+ clock+=simStep;
+
+ if(clock>=nextIncidentAt)spawnIncident();
 
  vehicles.forEach(v=>{
    if(v.status==='go'){
      const i=incidents.find(x=>x.id===v.target);
-     if(!i||i.status==='done')return;
+     if(!i||i.status!=='open')return;
      if(moveAlongRoute(v,step)){
        v.status='scene';
        i.log.push({text:v.call+' an der Einsatzstelle eingetroffen.',tone:''});
@@ -414,34 +581,47 @@ function tick(dt){
      if(moveAlongRoute(v,step)){
        v.status='free';
        v.target=null;
+       releaseCrew(v);
      }
    }
  });
 
  incidents.forEach(i=>{
-   if(i.status==='done')return;
-   i.age+=step;
-   const on=vehicles.filter(v=>v.target===i.id&&v.status==='scene'),caps=availableCaps(i);
-   if(on.length){
-     const r=Object.entries(i.req);
-     const coverage=r.reduce((sum,[k,n])=>sum+Math.min(1,(caps[k]||0)/n),0)/r.length;
-     i.work+=step*(1+3*coverage);
+   if(i.status!=='open')return;
+   i.age+=simStep;
+
+   if(i.support&&!i.supportArrived){
+     i.support.eta-=simStep;
+     if(i.support.eta<=0){
+       i.supportArrived=true;
+       i.log.push({text:'Nachgeforderte Unterstützung ist eingetroffen.',tone:'good'});
+     }
    }
+
+   const on=vehicles.filter(v=>v.target===i.id&&v.status==='scene');
+   const caps=availableCaps(i);
+
    if(on.length&&i.stage===0){
-     i.stage=1;i.log.push({text:'Ersteintreffend: Lage bestätigt, Erkundung läuft.',tone:'warn'});
+     i.stage=1;
+     i.log.push({text:'Ersteintreffend: Lage bestätigt. Jetzt ist eine taktische Entscheidung nötig.',tone:'warn'});
    }
-   if(i.age>20&&i.stage===1&&(i.req.fire||0)>0&&(caps.fire||0)<i.req.fire){
-     i.stage=2;i.req.fire++;i.need+=30;
-     i.log.push({text:'Lageverschärfung: Feuer breitet sich aus. Weitere Kräfte erforderlich.',tone:'danger'});
+
+   if(on.length){
+     const requirements=Object.entries(i.req);
+     const coverage=requirements.reduce((sum,[k,n])=>sum+Math.min(1,(caps[k]||0)/n),0)/requirements.length;
+     const missing=1-coverage;
+     i.work+=simStep*(0.10+0.42*coverage);
+     if(i.decisionMade){
+       i.risk=clamp(i.risk+simStep*(missing*0.045-coverage*0.018),0,100);
+     }else{
+       i.risk=clamp(i.risk+simStep*(0.018+missing*0.035),0,100);
+     }
+   }else{
+     i.risk=clamp(i.risk+simStep*0.012,0,100);
    }
-   if(i.work>=i.need){
-     i.status='done';i.log.push({text:'Einsatz beendet. Maßnahmen abgeschlossen.',tone:'good'});
-     vehicles.filter(v=>v.target===i.id&&v.status==='scene').forEach(v=>{
-       const s=S(v.station);
-       planRoute(v,s,'back',null);
-     });
-     money+=250;rep=Math.min(100,rep+1);
-   }
+
+   if(i.risk>=100)finishIncident(i,false);
+   else if(i.work>=i.need&&i.decisionMade)finishIncident(i,true);
  });
 }
 
