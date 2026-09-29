@@ -5,38 +5,304 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b1020">
 <title>Landkreis 112</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <style>
-*{box-sizing:border-box}body{margin:0;background:#090e18;color:#e8edf5;font-family:system-ui,-apple-system,Segoe UI,sans-serif}.app{min-height:100vh;display:grid;grid-template-rows:auto 1fr}.top{padding:12px 16px;background:#101827;border-bottom:1px solid #263247;display:flex;align-items:center;gap:12px;flex-wrap:wrap;position:sticky;top:0;z-index:10}.logo{font-size:25px}.brand{font-weight:900;letter-spacing:.06em}.sub{display:block;color:#8190a8;font-size:11px;font-weight:500}.stats{margin-left:auto;display:flex;gap:7px;flex-wrap:wrap}.pill{background:#151f2f;border:1px solid #2c394d;padding:7px 9px;border-radius:8px;font-size:12px}.controls{display:flex;gap:5px}.controls button,.btn{border:1px solid #345071;background:#17253a;color:#dce9f7;border-radius:7px;padding:7px 10px;font-weight:700}.controls .on{background:#2869c7}.grid{display:grid;grid-template-columns:270px 1fr 360px;min-height:0}.panel{background:#0f1623;border-right:1px solid #202b3d;padding:13px;overflow:auto}.panel:last-child{border:0}.head{display:flex;align-items:center;justify-content:space-between;gap:8px}.head h2{font-size:17px;margin:0 0 10px}.small{font-size:11px;padding:6px 8px}.incident{display:block;width:100%;text-align:left;background:#151e2d;border:1px solid #29364a;color:#e8edf5;border-radius:10px;padding:10px;margin:0 0 8px}.incident.sel{border-color:#5693ef;box-shadow:inset 3px 0 #5693ef}.incident.done{opacity:.5}.row{display:flex;justify-content:space-between;gap:8px}.code{background:#755623;color:#ffe0a8;border-radius:5px;padding:3px 6px;font-size:10px;font-weight:900}.addr{color:#8392a8;font-size:10px;margin-top:6px}.mapwrap{position:relative;min-height:540px;overflow:hidden;background:#24313d}.map{position:absolute;inset:0;background-color:#253641;background-image:linear-gradient(#fff1 1px,transparent 1px),linear-gradient(90deg,#fff1 1px,transparent 1px);background-size:35px 35px}.road{position:absolute;height:8px;background:#606c77;border-radius:6px}.r1{width:80%;left:10%;top:35%;transform:rotate(5deg)}.r2{width:70%;left:20%;top:67%;transform:rotate(-18deg)}.river{position:absolute;width:120%;height:22px;left:-10%;top:53%;background:#315a72;transform:rotate(-8deg)}.station,.marker,.unit{position:absolute;transform:translate(-50%,-50%);display:grid;place-items:center}.station{width:42px;height:42px;border-radius:9px;background:#1b4e91;border:2px solid #8dbaff;z-index:2}.station span,.marker span{position:absolute;top:43px;font-size:9px;background:#0b121ddd;padding:2px 5px;border-radius:4px;white-space:nowrap}.marker{width:48px;height:48px;border-radius:50%;background:#7b3827;border:2px solid #ffd0c0;z-index:3;cursor:pointer}.marker.sel{outline:3px solid #fff8;outline-offset:4px}.unit{width:27px;height:27px;border-radius:6px;background:#2673c7;border:1px solid #b8d6ff;z-index:4;transition:left .45s linear,top .45s linear}.unit.go{background:#d84242}.unit.scene{background:#d8962d}.detail h2{font-size:20px;margin:4px 0}.muted{color:#8290a4;font-size:11px}.section{border-top:1px solid #273246;padding-top:11px;margin-top:11px}.reqs{display:grid;grid-template-columns:1fr 1fr;gap:6px}.req{background:#151e2b;border:1px solid #303d51;padding:8px;border-radius:7px;font-size:11px;display:flex;justify-content:space-between}.req.ok{border-color:#34704b;background:#13271b}.vehicles{display:flex;flex-direction:column;gap:6px}.veh{width:100%;display:flex;align-items:center;gap:8px;background:#151e2b;color:#e8edf5;border:1px solid #303d51;border-radius:8px;padding:9px;text-align:left}.veh.sel{border-color:#5b91df;background:#172941}.veh.busy{opacity:.45}.check{width:20px;height:20px;border:1px solid #53637a;border-radius:4px;display:grid;place-items:center}.vmain{flex:1}.vmain strong,.vmain small{display:block}.vmain small{font-size:9px;color:#8392a8}.dispatch{width:100%;margin-top:9px;padding:12px;border-radius:8px;border:1px solid #6ca1ef;background:#2e6dbc;color:white;font-weight:900}.dispatch:disabled{opacity:.35}.log{max-height:180px;overflow:auto;font-size:11px}.msg{padding:7px 0;border-bottom:1px solid #202a39}.warn{color:#f5bd62}.danger{color:#ff8787}.good{color:#77d79a}
-@media(max-width:800px){.top{padding:9px}.stats{order:3;width:100%;margin:0;overflow:auto;flex-wrap:nowrap}.pill{flex:0 0 auto}.grid{display:flex;flex-direction:column}.panel{overflow:visible;border-right:0;border-bottom:1px solid #202b3d}.incidents{display:flex;overflow:auto;gap:8px}.incident{flex:0 0 225px;margin:0}.mapwrap{min-height:330px;height:43vh}.reqs{grid-template-columns:1fr}.vehicles{max-height:340px;overflow:auto}.dispatch{position:sticky;bottom:8px}.sub{font-size:9px}}
+*{box-sizing:border-box}
+html,body,#app{margin:0;min-height:100%;background:#090e18;color:#e8edf5;font-family:system-ui,-apple-system,Segoe UI,sans-serif}
+button{font:inherit}
+.app{min-height:100vh;display:grid;grid-template-rows:auto 1fr}
+.top{padding:12px 16px;background:#101827;border-bottom:1px solid #263247;display:flex;align-items:center;gap:12px;flex-wrap:wrap;position:sticky;top:0;z-index:1000}
+.logo{font-size:25px}.brand{font-weight:900;letter-spacing:.06em}.sub{display:block;color:#8190a8;font-size:11px;font-weight:500}
+.stats{margin-left:auto;display:flex;gap:7px;flex-wrap:wrap}.pill{background:#151f2f;border:1px solid #2c394d;padding:7px 9px;border-radius:8px;font-size:12px}
+.controls{display:flex;gap:5px}.controls button,.btn{border:1px solid #345071;background:#17253a;color:#dce9f7;border-radius:7px;padding:7px 10px;font-weight:700;cursor:pointer}.controls .on{background:#2869c7}
+.grid{display:grid;grid-template-columns:270px minmax(0,1fr) 360px;min-height:0}
+.panel{background:#0f1623;border-right:1px solid #202b3d;padding:13px;overflow:auto}.panel:last-child{border:0}
+.head{display:flex;align-items:center;justify-content:space-between;gap:8px}.head h2{font-size:17px;margin:0 0 10px}.small{font-size:11px;padding:6px 8px}
+.incident{display:block;width:100%;text-align:left;background:#151e2d;border:1px solid #29364a;color:#e8edf5;border-radius:10px;padding:10px;margin:0 0 8px;cursor:pointer}
+.incident.sel{border-color:#5693ef;box-shadow:inset 3px 0 #5693ef}.incident.done{opacity:.5}.row{display:flex;justify-content:space-between;gap:8px}
+.code{background:#755623;color:#ffe0a8;border-radius:5px;padding:3px 6px;font-size:10px;font-weight:900}.addr{color:#8392a8;font-size:10px;margin-top:6px}
+.mapwrap{position:relative;min-height:540px;background:#24313d}.map{position:absolute;inset:0;z-index:1}
+.detail h2{font-size:20px;margin:4px 0}.muted{color:#8290a4;font-size:11px}.section{border-top:1px solid #273246;padding-top:11px;margin-top:11px}
+.reqs{display:grid;grid-template-columns:1fr 1fr;gap:6px}.req{background:#151e2b;border:1px solid #303d51;padding:8px;border-radius:7px;font-size:11px;display:flex;justify-content:space-between}.req.ok{border-color:#34704b;background:#13271b}
+.vehicles{display:flex;flex-direction:column;gap:6px}.veh{width:100%;display:flex;align-items:center;gap:8px;background:#151e2b;color:#e8edf5;border:1px solid #303d51;border-radius:8px;padding:9px;text-align:left;cursor:pointer}
+.veh.sel{border-color:#5b91df;background:#172941}.veh.busy{opacity:.45;cursor:default}.check{width:20px;height:20px;border:1px solid #53637a;border-radius:4px;display:grid;place-items:center}.vmain{flex:1}.vmain strong,.vmain small{display:block}.vmain small{font-size:9px;color:#8392a8}
+.dispatch{width:100%;margin-top:9px;padding:12px;border-radius:8px;border:1px solid #6ca1ef;background:#2e6dbc;color:white;font-weight:900;cursor:pointer}.dispatch:disabled{opacity:.35;cursor:default}
+.log{max-height:180px;overflow:auto;font-size:11px}.msg{padding:7px 0;border-bottom:1px solid #202a39}.warn{color:#f5bd62}.danger{color:#ff8787}.good{color:#77d79a}
+.map-badge{position:absolute;z-index:500;top:10px;left:50%;transform:translateX(-50%);background:#101827e8;border:1px solid #3c4b62;border-radius:8px;padding:6px 9px;font-size:11px;pointer-events:none}
+.leaflet-control-attribution{font-size:9px!important}
+.game-icon{background:transparent!important;border:0!important}
+.pin{display:grid;place-items:center;position:relative;filter:drop-shadow(0 2px 4px #0008)}
+.pin.station{width:38px;height:38px;border-radius:9px;background:#1b4e91;border:2px solid #a7ceff;font-size:20px}
+.pin.incident{width:42px;height:42px;border-radius:50%;background:#8f3b2d;border:2px solid #ffd0c0;font-size:21px;animation:pulse 1.8s infinite}
+.pin.incident.selected{outline:4px solid #ffffff99;outline-offset:3px}
+.pin.unit{width:29px;height:29px;border-radius:7px;background:#2673c7;border:2px solid #d4e7ff;font-size:16px}
+.pin.unit.go{background:#d84242}.pin.unit.scene{background:#d8962d}.pin.unit.back{background:#66788f}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 #ff795855}50%{box-shadow:0 0 0 8px #ff795800}}
+.leaflet-popup-content-wrapper,.leaflet-popup-tip{background:#111b2b;color:#edf4ff}.leaflet-popup-content{margin:10px 12px;font-size:12px}
+@media(max-width:800px){
+ .top{padding:9px}.stats{order:3;width:100%;margin:0;overflow:auto;flex-wrap:nowrap}.pill{flex:0 0 auto}
+ .grid{display:flex;flex-direction:column}.panel{overflow:visible;border-right:0;border-bottom:1px solid #202b3d}
+ .incidents{display:flex;overflow:auto;gap:8px;padding-bottom:3px}.incident{flex:0 0 225px;margin:0}
+ .mapwrap{min-height:340px;height:46vh}.reqs{grid-template-columns:1fr}.vehicles{max-height:340px;overflow:auto}.dispatch{position:sticky;bottom:8px}
+ .sub{font-size:9px}
+}
 </style>
 </head>
 <body>
 <div id="app"></div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-const stations=[{id:'a',name:'FF Sonnenfels',x:24,y:28},{id:'b',name:'FF Eichenrode',x:73,y:24},{id:'c',name:'Rettungswache Süd',x:60,y:78}];
-const base=[['h','HLF 20','Florian SF 46-1','a',{fire:3,rescue:2}],['d','DLK 23/12','Florian SF 30-1','a',{fire:1,ladder:3}],['l','LF 10','Florian ER 42-1','b',{fire:2,rescue:1}],['e','ELW 1','Florian ER 11-1','b',{command:3}],['r1','RTW','Rettung 1-83-1','c',{medical:3}],['r2','RTW','Rettung 1-83-2','c',{medical:3}]];
-const tpl=[
-['B2','Rauchentwicklung aus Gebäude','Lindenstraße 8',44,41,{fire:3,rescue:1,medical:1},110,'Mehrere Anrufer melden Rauch aus einem Wohnhaus.'],
-['TH Y','VU – Person eingeklemmt','Kreisstraße 17',78,55,{rescue:3,medical:2},100,'PKW gegen Baum. Eine Person ist eingeschlossen.'],
-['B1','Mülleimerbrand','Schulweg 4',32,69,{fire:1},55,'Müllcontainer brennt auf einem Parkplatz.'],
-['H1','Person hinter Tür','Am Markt 12',55,24,{rescue:1,medical:1},65,'Hilferufe aus einer verschlossenen Wohnung.'],
-['B2','Kellerbrand','Eichenring 31',19,57,{fire:4,rescue:1,medical:1},125,'Starke Rauchentwicklung aus Kellerfenstern.']
+const stations=[
+ {id:'a',name:'FF Sonnenfels',lat:52.3786,lng:9.7195},
+ {id:'b',name:'FF Eichenrode',lat:52.3905,lng:9.7640},
+ {id:'c',name:'Rettungswache Süd',lat:52.3478,lng:9.7430}
 ];
+
+const base=[
+ ['h','HLF 20','Florian SF 46-1','a',{fire:3,rescue:2}],
+ ['d','DLK 23/12','Florian SF 30-1','a',{fire:1,ladder:3}],
+ ['l','LF 10','Florian ER 42-1','b',{fire:2,rescue:1}],
+ ['e','ELW 1','Florian ER 11-1','b',{command:3}],
+ ['r1','RTW','Rettung 1-83-1','c',{medical:3}],
+ ['r2','RTW','Rettung 1-83-2','c',{medical:3}]
+];
+
+const templates=[
+ ['B2','Rauchentwicklung aus Gebäude','Lindenstraße 8',52.3728,9.7425,{fire:3,rescue:1,medical:1},110,'Mehrere Anrufer melden Rauch aus einem Wohnhaus.'],
+ ['TH Y','VU – Person eingeklemmt','Kreisstraße 17',52.3845,9.7840,{rescue:3,medical:2},100,'PKW gegen Baum. Eine Person ist eingeschlossen.'],
+ ['B1','Mülleimerbrand','Schulweg 4',52.3558,9.7105,{fire:1},55,'Müllcontainer brennt auf einem Parkplatz.'],
+ ['H1','Person hinter Tür','Am Markt 12',52.3872,9.7355,{rescue:1,medical:1},65,'Hilferufe aus einer verschlossenen Wohnung.'],
+ ['B2','Kellerbrand','Eichenring 31',52.3615,9.7710,{fire:4,rescue:1,medical:1},125,'Starke Rauchentwicklung aus Kellerfenstern.']
+];
+
 const cap={fire:'🔥 Brand',rescue:'🛠 Rettung',medical:'❤️ Medizin',ladder:'🪜 Leiter',command:'📻 Führung'};
-let vehicles=[],incidents=[],selected='i1',chosen=[],speed=1,pause=false,serial=2,money=2500,rep=62,clock=8*3600+12*60;
-const app=document.querySelector('#app'),S=id=>stations.find(x=>x.id===id),I=()=>incidents.find(x=>x.id===selected)||incidents[0],dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
-function reset(){vehicles=base.map(([id,type,call,station,caps])=>{const s=S(station);return{id,type,call,station,caps,x:s.x,y:s.y,status:'free',target:null}});incidents=[make(0,1)];selected='i1';chosen=[];speed=1;pause=false;serial=2;money=2500;rep=62;clock=8*3600+12*60;render()}
-function make(n,id){const[t,title,address,x,y,req,need,report]=tpl[n%tpl.length];return{id:'i'+id,t,title,address,x,y,req:{...req},need,work:0,age:0,status:'open',stage:0,log:[{text:report,tone:''}]}}
-function availableCaps(i){const o={};vehicles.filter(v=>v.target===i.id&&v.status==='scene').forEach(v=>Object.entries(v.caps).forEach(([k,n])=>o[k]=(o[k]||0)+n));return o}
-function render(){const i=I(),caps=i?availableCaps(i):{},open=incidents.filter(x=>x.status!=='done').length,time=new Date(clock*1000).toISOString().slice(11,16);
-app.innerHTML=`<div class="app"><header class="top"><div class="logo">🚨</div><div class="brand">LANDKREIS 112<span class="sub">Leitstelle Sonnenfels · Prototyp 0.1</span></div><div class="stats"><span class="pill">🕒 ${time}</span><span class="pill">⚠️ ${open} offen</span><span class="pill">👥 ${rep}%</span><span class="pill">€ ${money}</span></div><div class="controls"><button data-pause>${pause?'▶':'⏸'}</button>${[1,2,4].map(x=>`<button data-speed="${x}" class="${!pause&&speed===x?'on':''}">${x}×</button>`).join('')}<button data-reset>↻</button></div></header>
-<main class="grid"><aside class="panel"><div class="head"><h2>Einsätze</h2><button class="btn small" data-new>+ Neu</button></div><div class="incidents">${incidents.map(x=>`<button class="incident ${x.id===selected?'sel':''} ${x.status==='done'?'done':''}" data-inc="${x.id}"><div class="row"><span class="code">${x.t}</span><small>${Math.floor(x.age/60)}:${String(Math.floor(x.age%60)).padStart(2,'0')}</small></div><strong>${x.title}</strong><div class="addr">📍 ${x.address}</div></button>`).join('')}</div></aside>
-<section class="mapwrap"><div class="map"><div class="river"></div><div class="road r1"></div><div class="road r2"></div>${stations.map(s=>`<div class="station" style="left:${s.x}%;top:${s.y}%">🏢<span>${s.name}</span></div>`).join('')}${incidents.filter(x=>x.status!=='done').map(x=>`<button class="marker ${x.id===selected?'sel':''}" data-inc="${x.id}" style="left:${x.x}%;top:${x.y}%">🔥<span>${x.t}</span></button>`).join('')}${vehicles.map(v=>`<div class="unit ${v.status==='go'?'go':v.status==='scene'?'scene':''}" style="left:${v.x}%;top:${v.y}%">${v.type==='RTW'?'✚':'🚒'}</div>`).join('')}</div></section>
-<aside class="panel detail">${i?detail(i,caps):'<h2>Kein Einsatz</h2>'}</aside></main></div>`;bind()}
-function detail(i,caps){return `<span class="code">${i.t}</span><h2>${i.title}</h2><div class="muted">📍 ${i.address}</div><div class="section"><strong>Anforderungen</strong><div class="reqs">${Object.entries(i.req).map(([k,n])=>`<div class="req ${(caps[k]||0)>=n?'ok':''}"><span>${cap[k]}</span><b>${caps[k]||0} / ${n}</b></div>`).join('')}</div></div><div class="section"><strong>Lagemeldungen</strong><div class="log">${[...i.log].reverse().map(x=>`<div class="msg ${x.tone}">${x.text}</div>`).join('')}</div></div><div class="section"><strong>Fahrzeuge alarmieren</strong><div class="vehicles">${vehicles.map(v=>`<button class="veh ${chosen.includes(v.id)?'sel':''} ${v.status!=='free'?'busy':''}" data-veh="${v.id}" ${v.status!=='free'?'disabled':''}><span class="check">${chosen.includes(v.id)?'✓':''}</span><span class="vmain"><strong>${v.type}</strong><small>${v.call} · ${S(v.station).name}</small></span><small>${v.status==='free'?'frei':v.status==='go'?'Anfahrt':v.status==='scene'?'vor Ort':'Rückfahrt'}</small></button>`).join('')}</div><button class="dispatch" data-dispatch ${!chosen.length?'disabled':''}>📻 ALARMIEREN (${chosen.length})</button></div>`}
-function bind(){document.querySelectorAll('[data-inc]').forEach(e=>e.onclick=()=>{selected=e.dataset.inc;chosen=[];render()});document.querySelectorAll('[data-veh]').forEach(e=>e.onclick=()=>{const id=e.dataset.veh;chosen=chosen.includes(id)?chosen.filter(x=>x!==id):[...chosen,id];render()});document.querySelectorAll('[data-speed]').forEach(e=>e.onclick=()=>{speed=+e.dataset.speed;pause=false;render()});document.querySelector('[data-pause]').onclick=()=>{pause=!pause;render()};document.querySelector('[data-reset]').onclick=reset;document.querySelector('[data-new]').onclick=()=>{const n=make(serial%tpl.length,serial++);incidents.push(n);selected=n.id;chosen=[];render()};const d=document.querySelector('[data-dispatch]');if(d)d.onclick=dispatch}
-function dispatch(){const i=I();chosen.forEach(id=>{const v=vehicles.find(x=>x.id===id);if(v&&v.status==='free'){v.status='go';v.target=i.id}});i.log.push({text:chosen.length+' Fahrzeug(e) alarmiert.',tone:''});chosen=[];render()}
-function tick(dt){if(pause)return;const step=dt*speed;clock+=step*30;vehicles.forEach(v=>{if(v.status==='go'){const i=incidents.find(x=>x.id===v.target);if(!i||i.status==='done')return;const d=dist(v,i);if(d<1){v.x=i.x;v.y=i.y;v.status='scene'}else{const m=Math.min(1,4*step/d);v.x+=(i.x-v.x)*m;v.y+=(i.y-v.y)*m}}else if(v.status==='back'){const s=S(v.station),d=dist(v,s);if(d<1){v.x=s.x;v.y=s.y;v.status='free';v.target=null}else{const m=Math.min(1,4*step/d);v.x+=(s.x-v.x)*m;v.y+=(s.y-v.y)*m}}});incidents.forEach(i=>{if(i.status==='done')return;i.age+=step;const on=vehicles.filter(v=>v.target===i.id&&v.status==='scene'),caps=availableCaps(i);if(on.length){const r=Object.entries(i.req),coverage=r.reduce((s,[k,n])=>s+Math.min(1,(caps[k]||0)/n),0)/r.length;i.work+=step*(1+3*coverage)}if(on.length&&i.stage===0){i.stage=1;i.log.push({text:'Ersteintreffend: Lage bestätigt, Erkundung läuft.',tone:'warn'})}if(i.age>20&&i.stage===1&&(i.req.fire||0)>0&&(caps.fire||0)<i.req.fire){i.stage=2;i.req.fire++;i.need+=30;i.log.push({text:'Lageverschärfung: Feuer breitet sich aus. Weitere Kräfte erforderlich.',tone:'danger'})}if(i.work>=i.need){i.status='done';i.log.push({text:'Einsatz beendet. Maßnahmen abgeschlossen.',tone:'good'});vehicles.filter(v=>v.target===i.id&&v.status==='scene').forEach(v=>v.status='back');money+=250;rep=Math.min(100,rep+1)}})}
-reset();let last=performance.now(),acc=0;function loop(n){acc+=(n-last)/1000;last=n;if(acc>.5){tick(.5);acc=0;render()}requestAnimationFrame(loop)}requestAnimationFrame(loop);
+let vehicles=[],incidents=[],selected='i1',chosen=[],speed=1,paused=false,serial=2,money=2500,rep=62,clock=8*3600+12*60;
+let map;
+const stationMarkers=new Map(),incidentMarkers=new Map(),vehicleMarkers=new Map();
+const app=document.querySelector('#app');
+const S=id=>stations.find(x=>x.id===id);
+const I=()=>incidents.find(x=>x.id===selected)||incidents[0];
+const dist=(a,b)=>Math.hypot(a.lat-b.lat,(a.lng-b.lng)*0.62);
+
+function initLayout(){
+ app.innerHTML=`
+ <div class="app">
+  <header class="top">
+   <div class="logo">🚨</div>
+   <div class="brand">LANDKREIS 112<span class="sub">Leitstelle Sonnenfels · OSM-Prototyp 0.2</span></div>
+   <div class="stats" id="stats"></div>
+   <div class="controls" id="controls"></div>
+  </header>
+  <main class="grid">
+   <aside class="panel"><div class="head"><h2>Einsätze</h2><button class="btn small" id="newIncident">+ Neu</button></div><div class="incidents" id="incidentList"></div></aside>
+   <section class="mapwrap"><div id="map" class="map"></div><div class="map-badge">🗺️ Reale OSM-Karte · fiktive Einsatzlagen</div></section>
+   <aside class="panel detail" id="detail"></aside>
+  </main>
+ </div>`;
+
+ map=L.map('map',{zoomControl:true}).setView([52.3715,9.7420],13);
+ L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{
+   maxZoom:19,
+   attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+ }).addTo(map);
+
+ stations.forEach(s=>{
+   const marker=L.marker([s.lat,s.lng],{icon:icon('station','🏢')}).addTo(map);
+   marker.bindPopup('<strong>'+s.name+'</strong><br>Feuerwehr-/Rettungsstandort');
+   stationMarkers.set(s.id,marker);
+ });
+
+ document.querySelector('#newIncident').onclick=()=>{
+   const n=make(serial%templates.length,serial++);
+   incidents.push(n);selected=n.id;chosen=[];
+   map.panTo([n.lat,n.lng]);
+   render();
+ };
+ setTimeout(()=>map.invalidateSize(),100);
+}
+
+function icon(type,emoji,extra=''){
+ return L.divIcon({className:'game-icon',html:`<div class="pin ${type} ${extra}">${emoji}</div>`,iconSize:[42,42],iconAnchor:[21,21]});
+}
+
+function reset(){
+ vehicles=base.map(([id,type,call,station,caps])=>{
+   const s=S(station);
+   return{id,type,call,station,caps,lat:s.lat,lng:s.lng,status:'free',target:null};
+ });
+ incidents=[make(0,1)];
+ selected='i1';chosen=[];speed=1;paused=false;serial=2;money=2500;rep=62;clock=8*3600+12*60;
+ render();
+}
+
+function make(n,id){
+ const[t,title,address,lat,lng,req,need,report]=templates[n%templates.length];
+ return{id:'i'+id,t,title,address,lat,lng,req:{...req},need,work:0,age:0,status:'open',stage:0,log:[{text:report,tone:''}]};
+}
+
+function availableCaps(i){
+ const o={};
+ vehicles.filter(v=>v.target===i.id&&v.status==='scene').forEach(v=>Object.entries(v.caps).forEach(([k,n])=>o[k]=(o[k]||0)+n));
+ return o;
+}
+
+function syncMap(){
+ incidents.forEach(i=>{
+   if(i.status==='done'){
+     const m=incidentMarkers.get(i.id);if(m){m.remove();incidentMarkers.delete(i.id)}
+     return;
+   }
+   let m=incidentMarkers.get(i.id);
+   if(!m){
+     m=L.marker([i.lat,i.lng],{icon:icon('incident','🔥',i.id===selected?'selected':'')}).addTo(map);
+     m.on('click',()=>{selected=i.id;chosen=[];render()});
+     incidentMarkers.set(i.id,m);
+   }
+   m.setLatLng([i.lat,i.lng]);
+   m.setIcon(icon('incident','🔥',i.id===selected?'selected':''));
+   m.bindPopup('<strong>'+i.t+' · '+i.title+'</strong><br>'+i.address);
+ });
+
+ [...incidentMarkers.keys()].forEach(id=>{
+   if(!incidents.some(i=>i.id===id&&i.status!=='done')){
+     incidentMarkers.get(id).remove();incidentMarkers.delete(id);
+   }
+ });
+
+ vehicles.forEach(v=>{
+   let m=vehicleMarkers.get(v.id);
+   const emoji=v.type==='RTW'?'✚':'🚒';
+   if(!m){
+     m=L.marker([v.lat,v.lng],{icon:icon('unit',emoji,v.status)}).addTo(map);
+     m.bindTooltip(v.call,{direction:'top',offset:[0,-12]});
+     vehicleMarkers.set(v.id,m);
+   }
+   m.setLatLng([v.lat,v.lng]);
+   m.setIcon(icon('unit',emoji,v.status));
+ });
+}
+
+function render(){
+ const i=I(),caps=i?availableCaps(i):{},open=incidents.filter(x=>x.status!=='done').length;
+ const time=new Date(clock*1000).toISOString().slice(11,16);
+
+ document.querySelector('#stats').innerHTML=
+   `<span class="pill">🕒 ${time}</span><span class="pill">⚠️ ${open} offen</span><span class="pill">👥 ${rep}%</span><span class="pill">€ ${money}</span>`;
+
+ document.querySelector('#controls').innerHTML=
+   `<button id="pauseBtn">${paused?'▶':'⏸'}</button>${[1,2,4].map(x=>`<button data-speed="${x}" class="${!paused&&speed===x?'on':''}">${x}×</button>`).join('')}<button id="resetBtn">↻</button>`;
+
+ document.querySelector('#incidentList').innerHTML=incidents.map(x=>
+   `<button class="incident ${x.id===selected?'sel':''} ${x.status==='done'?'done':''}" data-inc="${x.id}">
+      <div class="row"><span class="code">${x.t}</span><small>${Math.floor(x.age/60)}:${String(Math.floor(x.age%60)).padStart(2,'0')}</small></div>
+      <strong>${x.title}</strong><div class="addr">📍 ${x.address}</div>
+    </button>`).join('');
+
+ document.querySelector('#detail').innerHTML=i?detail(i,caps):'<h2>Kein Einsatz</h2>';
+
+ bindUi();
+ syncMap();
+}
+
+function detail(i,caps){
+ return `
+ <span class="code">${i.t}</span><h2>${i.title}</h2><div class="muted">📍 ${i.address}</div>
+ <div class="section"><strong>Anforderungen</strong><div class="reqs">
+  ${Object.entries(i.req).map(([k,n])=>`<div class="req ${(caps[k]||0)>=n?'ok':''}"><span>${cap[k]}</span><b>${caps[k]||0} / ${n}</b></div>`).join('')}
+ </div></div>
+ <div class="section"><strong>Lagemeldungen</strong><div class="log">
+  ${[...i.log].reverse().map(x=>`<div class="msg ${x.tone}">${x.text}</div>`).join('')}
+ </div></div>
+ <div class="section"><strong>Fahrzeuge alarmieren</strong><div class="vehicles">
+  ${vehicles.map(v=>`<button class="veh ${chosen.includes(v.id)?'sel':''} ${v.status!=='free'?'busy':''}" data-veh="${v.id}" ${v.status!=='free'?'disabled':''}>
+    <span class="check">${chosen.includes(v.id)?'✓':''}</span>
+    <span class="vmain"><strong>${v.type}</strong><small>${v.call} · ${S(v.station).name}</small></span>
+    <small>${v.status==='free'?'frei':v.status==='go'?'Anfahrt':v.status==='scene'?'vor Ort':'Rückfahrt'}</small>
+  </button>`).join('')}
+ </div><button class="dispatch" id="dispatchBtn" ${!chosen.length?'disabled':''}>📻 ALARMIEREN (${chosen.length})</button></div>`;
+}
+
+function bindUi(){
+ document.querySelectorAll('[data-inc]').forEach(e=>e.onclick=()=>{
+   selected=e.dataset.inc;chosen=[];
+   const i=I();if(i)map.panTo([i.lat,i.lng]);
+   render();
+ });
+ document.querySelectorAll('[data-veh]').forEach(e=>e.onclick=()=>{
+   const id=e.dataset.veh;chosen=chosen.includes(id)?chosen.filter(x=>x!==id):[...chosen,id];render();
+ });
+ document.querySelectorAll('[data-speed]').forEach(e=>e.onclick=()=>{speed=+e.dataset.speed;paused=false;render()});
+ document.querySelector('#pauseBtn').onclick=()=>{paused=!paused;render()};
+ document.querySelector('#resetBtn').onclick=reset;
+ const d=document.querySelector('#dispatchBtn');if(d)d.onclick=dispatch;
+}
+
+function dispatch(){
+ const i=I();if(!i)return;
+ chosen.forEach(id=>{const v=vehicles.find(x=>x.id===id);if(v&&v.status==='free'){v.status='go';v.target=i.id}});
+ i.log.push({text:chosen.length+' Fahrzeug(e) alarmiert.',tone:''});
+ chosen=[];render();
+}
+
+function moveToward(v,target,step){
+ const d=dist(v,target);
+ if(d<0.00025){v.lat=target.lat;v.lng=target.lng;return true}
+ const max=0.0016*step;
+ const ratio=Math.min(1,max/d);
+ v.lat+=(target.lat-v.lat)*ratio;
+ v.lng+=(target.lng-v.lng)*ratio;
+ return false;
+}
+
+function tick(dt){
+ if(paused)return;
+ const step=dt*speed;clock+=step*30;
+
+ vehicles.forEach(v=>{
+   if(v.status==='go'){
+     const i=incidents.find(x=>x.id===v.target);
+     if(!i||i.status==='done')return;
+     if(moveToward(v,i,step))v.status='scene';
+   }else if(v.status==='back'){
+     const s=S(v.station);
+     if(moveToward(v,s,step)){v.status='free';v.target=null}
+   }
+ });
+
+ incidents.forEach(i=>{
+   if(i.status==='done')return;
+   i.age+=step;
+   const on=vehicles.filter(v=>v.target===i.id&&v.status==='scene'),caps=availableCaps(i);
+   if(on.length){
+     const r=Object.entries(i.req);
+     const coverage=r.reduce((sum,[k,n])=>sum+Math.min(1,(caps[k]||0)/n),0)/r.length;
+     i.work+=step*(1+3*coverage);
+   }
+   if(on.length&&i.stage===0){
+     i.stage=1;i.log.push({text:'Ersteintreffend: Lage bestätigt, Erkundung läuft.',tone:'warn'});
+   }
+   if(i.age>20&&i.stage===1&&(i.req.fire||0)>0&&(caps.fire||0)<i.req.fire){
+     i.stage=2;i.req.fire++;i.need+=30;
+     i.log.push({text:'Lageverschärfung: Feuer breitet sich aus. Weitere Kräfte erforderlich.',tone:'danger'});
+   }
+   if(i.work>=i.need){
+     i.status='done';i.log.push({text:'Einsatz beendet. Maßnahmen abgeschlossen.',tone:'good'});
+     vehicles.filter(v=>v.target===i.id&&v.status==='scene').forEach(v=>v.status='back');
+     money+=250;rep=Math.min(100,rep+1);
+   }
+ });
+}
+
+initLayout();
+reset();
+
+let last=performance.now(),acc=0;
+function loop(now){
+ acc+=(now-last)/1000;last=now;
+ if(acc>.35){tick(.35);acc=0;render()}
+ requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
 </script>
-</body></html>
+</body>
+</html>
