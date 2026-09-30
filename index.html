@@ -35,6 +35,11 @@ button{font:inherit}
 .riskbar,.progressbar{height:9px;background:#202b3a;border-radius:99px;overflow:hidden;margin-top:6px}.riskfill,.progressfill{height:100%;background:#d66b49}.progressfill{background:#4c91e6}.riskrow{display:flex;justify-content:space-between;font-size:11px;margin-top:10px}.risklow{color:#78d79b}.riskmid{color:#f2bd65}.riskhigh{color:#ff7c7c}
 .decision{background:#171f2d;border:1px solid #46536a;border-radius:10px;padding:10px;margin-top:10px}.decision strong{display:block;margin-bottom:5px}.choice{display:block;width:100%;text-align:left;margin-top:7px;padding:9px;border-radius:8px;border:1px solid #3a4e69;background:#16243a;color:#eaf2ff}.choice:hover{background:#1c3150}.choice small{display:block;color:#98a8bd;margin-top:3px}
 .stationcard,.upgrade{background:#151e2b;border:1px solid #303d51;border-radius:9px;padding:10px;margin-bottom:8px}.stationcard h3,.upgrade h3{font-size:13px;margin:0 0 5px}.metric{display:flex;justify-content:space-between;font-size:11px;color:#aab7c7;margin-top:4px}.upgrade button{width:100%;margin-top:8px;padding:8px;border:1px solid #4c6d96;border-radius:7px;background:#213c60;color:#fff;font-weight:800}.upgrade button:disabled{opacity:.35}.goal{background:#132338;border:1px solid #35557d;border-radius:9px;padding:9px;margin-bottom:10px}.goal strong{font-size:12px}.goal small{display:block;color:#93a5bb;margin-top:4px}.badge{display:inline-block;padding:2px 5px;border-radius:4px;background:#26354a;color:#b9c9dc;font-size:9px;margin-right:4px}
+.aao{background:#101c2d;border:1px solid #31547d;border-radius:10px;padding:10px;margin-top:12px}
+.aaohead{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:7px}.aaohead strong{font-size:12px}.aaostatus{font-size:10px;color:#9fb0c7}
+.aaolist{display:flex;flex-wrap:wrap;gap:5px}.aaoslot{font-size:10px;padding:5px 7px;border-radius:999px;background:#17263a;border:1px solid #314861;color:#cbd9e9}
+.aaoslot.ok{border-color:#3f7a57;background:#14291d;color:#9de0b6}.aaoslot.missing{border-color:#774747;background:#2b1818;color:#ffadad}
+.aaobutton{width:100%;margin-top:8px;padding:10px;border:1px solid #5b95dc;border-radius:8px;background:#235991;color:#fff;font-weight:900;cursor:pointer}.aaobutton:disabled{opacity:.35;cursor:default}
 .map-badge{position:absolute;z-index:500;top:10px;left:50%;transform:translateX(-50%);background:#0d1522e8;border:1px solid #3c4b62;border-radius:999px;padding:6px 10px;font-size:10px;pointer-events:none;box-shadow:0 4px 12px #0004;backdrop-filter:blur(5px)}
 .leaflet-control-attribution{font-size:9px!important}
 .game-icon{background:transparent!important;border:0!important}
@@ -117,8 +122,27 @@ const templates=[
 const cap={fire:'🔥 Brand',rescue:'🛠 Rettung',medical:'❤️ Medizin',ladder:'🪜 Leiter',command:'📻 Führung'};
 const SIM_TIME_SCALE=6;
 const geocodeCache=new Map();
+const AAO={
+ 'B2':[
+   {label:'Löschfahrzeug',types:['HLF 20','LF 10']},
+   {label:'Drehleiter',types:['DLK 23/12']},
+   {label:'Rettungsdienst',types:['RTW']}
+ ],
+ 'TH Y':[
+   {label:'Technische Rettung',types:['HLF 20']},
+   {label:'Rettungsdienst',types:['RTW']}
+ ],
+ 'B1':[
+   {label:'Löschfahrzeug',types:['LF 10','HLF 20']}
+ ],
+ 'H1':[
+   {label:'Türöffnung',types:['HLF 20','LF 10']},
+   {label:'Rettungsdienst',types:['RTW']}
+ ]
+};
+const INCIDENT_AREA={minLat:52.342,maxLat:52.401,minLng:9.688,maxLng:9.797};
 let vehicles=[],incidents=[],selected='i1',chosen=[],speed=1,paused=false,serial=2,money=7500,rep=64,clock=8*3600+12*60;
-let xp=0,completed=0,failed=0,rightMode='incident',nextIncidentAt=clock+420,upgrades={agt:false,crew:false,hlf:false,rtw:false};
+let xp=0,completed=0,failed=0,rightMode='incident',nextIncidentAt=clock+420,upgrades={agt:false,crew:false,hlf:false,rtw:false},spawningIncident=false;
 let map;
 const stationMarkers=new Map(),incidentMarkers=new Map(),vehicleMarkers=new Map(),routeLines=new Map();
 const app=document.querySelector('#app');
@@ -134,7 +158,7 @@ function initLayout(){
  <div class="app">
   <header class="top">
    <div class="logo">🚨</div>
-   <div class="brand">LANDKREIS 112<span class="sub">Leitstelle Sonnenfels · Leitstellen-Tycoon · Prototyp 0.4</span></div>
+   <div class="brand">LANDKREIS 112<span class="sub">Leitstelle Sonnenfels · Leitstellen-Tycoon · Prototyp 0.5</span></div>
    <div class="stats" id="stats"></div>
    <div class="controls" id="controls"></div>
   </header>
@@ -158,11 +182,7 @@ function initLayout(){
  });
 
  document.querySelector('#newIncident').onclick=()=>{
-   const n=make(serial%templates.length,serial++);
-   incidents.push(n);selected=n.id;chosen=[];
-   map.panTo([n.lat,n.lng]);
-   render();
-   resolveIncidentAddress(n);
+   createRandomIncident(true);
  };
  setTimeout(()=>map.invalidateSize(),100);
 }
@@ -184,16 +204,92 @@ function reset(){
  });
  incidents=[make(0,1)];
  selected='i1';chosen=[];speed=1;paused=false;serial=2;money=7500;rep=64;clock=8*3600+12*60;
- xp=0;completed=0;failed=0;rightMode='incident';nextIncidentAt=clock+420;upgrades={agt:false,crew:false,hlf:false,rtw:false};
+ xp=0;completed=0;failed=0;rightMode='incident';nextIncidentAt=clock+420;upgrades={agt:false,crew:false,hlf:false,rtw:false};spawningIncident=false;
  render();
- resolveIncidentAddress(incidents[0]);
+ randomizeIncidentLocation(incidents[0]);
+
 }
 
-function make(n,id){
+function make(n,id,location=null){
  const t=templates[n%templates.length];
- return{id:'i'+id,t:t.code,title:t.title,address:'Adresse wird ermittelt…',lat:t.lat,lng:t.lng,req:{...t.req},need:t.need,work:0,age:0,status:'open',stage:0,
+ return{id:'i'+id,t:t.code,title:t.title,address:'Adresse wird ermittelt…',lat:location?location.lat:t.lat,lng:location?location.lng:t.lng,req:{...t.req},need:t.need,work:0,age:0,status:'open',stage:0,
    risk:t.risk,reward:t.reward,xp:t.xp,decision:t.decision,decisionMade:false,support:null,supportArrived:false,
    log:[{text:t.report,tone:''}]};
+}
+
+function randomAreaPoint(){
+ return{
+   lat:INCIDENT_AREA.minLat+Math.random()*(INCIDENT_AREA.maxLat-INCIDENT_AREA.minLat),
+   lng:INCIDENT_AREA.minLng+Math.random()*(INCIDENT_AREA.maxLng-INCIDENT_AREA.minLng)
+ };
+}
+
+async function snapToRoad(point){
+ const url='https://router.project-osrm.org/nearest/v1/driving/'+point.lng+','+point.lat+'?number=1';
+ const res=await fetch(url);
+ if(!res.ok)throw new Error('Nearest HTTP '+res.status);
+ const data=await res.json();
+ if(data.code!=='Ok'||!data.waypoints||!data.waypoints[0])throw new Error('Keine Straße gefunden');
+ const [lng,lat]=data.waypoints[0].location;
+ return{lat,lng};
+}
+
+async function getRandomRoutablePoint(){
+ for(let attempt=0;attempt<5;attempt++){
+   try{
+     const p=await snapToRoad(randomAreaPoint());
+     const tooClose=incidents.some(i=>i.status==='open'&&metersBetween(i,p)<700);
+     if(!tooClose)return p;
+   }catch(err){}
+ }
+ return snapToRoad(randomAreaPoint());
+}
+
+async function randomizeIncidentLocation(incident){
+ try{
+   const p=await getRandomRoutablePoint();
+   incident.lat=p.lat;incident.lng=p.lng;incident.address='Adresse wird ermittelt…';
+   if(incidentMarkers.has(incident.id)){
+     incidentMarkers.get(incident.id).setLatLng([p.lat,p.lng]);
+   }
+   render();
+   map.panTo([p.lat,p.lng]);
+   await resolveIncidentAddress(incident);
+ }catch(err){
+   incident.log.push({text:'Zufälliger OSM-Einsatzort konnte nicht geladen werden. Fallback-Position aktiv.',tone:'warn'});
+   resolveIncidentAddress(incident);
+ }
+}
+
+async function createRandomIncident(selectIt=true){
+ if(spawningIncident)return;
+ if(incidents.filter(i=>i.status==='open').length>=4){
+   if(selectIt){
+     const current=I();if(current)current.log.push({text:'Maximal vier offene Einsätze gleichzeitig.',tone:'warn'});
+     render();
+   }
+   return;
+ }
+ spawningIncident=true;
+ try{
+   const point=await getRandomRoutablePoint();
+   const idx=Math.floor(Math.random()*templates.length);
+   const n=make(idx,serial++,point);
+   incidents.push(n);
+   if(selectIt){selected=n.id;chosen=[];rightMode='incident';map.panTo([n.lat,n.lng])}
+   render();
+   await resolveIncidentAddress(n);
+ }catch(err){
+   const idx=Math.floor(Math.random()*templates.length);
+   const n=make(idx,serial++);
+   incidents.push(n);
+   if(selectIt){selected=n.id;chosen=[];rightMode='incident'}
+   n.log.push({text:'OSM-Zufallsort nicht erreichbar, Fallback-Position verwendet.',tone:'warn'});
+   render();
+   resolveIncidentAddress(n);
+ }finally{
+   spawningIncident=false;
+ }
 }
 
 function formatOsmAddress(data,incident){
@@ -256,6 +352,44 @@ function releaseCrew(v){
  s.crew=Math.min(s.maxCrew,s.crew+v.personnel.crew);
  s.agt=Math.min(s.maxAgt,s.agt+v.personnel.agt);
  v.reserved=false;
+}
+
+function getAaoSlots(i){
+ return AAO[i.t]||[];
+}
+
+function getAaoPlan(i){
+ const used=new Set();
+ const assignments=[];
+ const missing=[];
+ getAaoSlots(i).forEach(slot=>{
+   const candidates=vehicles
+     .filter(v=>!used.has(v.id)&&v.status==='free'&&crewAvailable(v)&&slot.types.includes(v.type))
+     .sort((a,b)=>metersBetween(a,i)-metersBetween(b,i));
+   if(candidates.length){
+     const v=candidates[0];
+     used.add(v.id);
+     assignments.push({slot:slot.label,vehicle:v});
+   }else{
+     missing.push(slot.label);
+   }
+ });
+ return{assignments,missing};
+}
+
+function alarmAao(){
+ const i=I();if(!i||i.status!=='open')return;
+ const plan=getAaoPlan(i);
+ const ids=plan.assignments.map(x=>x.vehicle.id);
+ if(!ids.length){
+   i.log.push({text:'AAO: Keine passenden verfügbaren Fahrzeuge.',tone:'danger'});
+   render();
+   return;
+ }
+ if(plan.missing.length){
+   i.log.push({text:'AAO unvollständig: '+plan.missing.join(', ')+' nicht verfügbar.',tone:'warn'});
+ }
+ dispatchIds(ids,i,'AAO');
 }
 
 function syncMap(){
@@ -350,8 +484,16 @@ function detail(i,caps){
    '<div class="decision"><strong>⚡ Entscheidung erforderlich</strong><div class="muted">'+i.decision.prompt+'</div>'+
    i.decision.choices.map((ch,idx)=>'<button class="choice" data-choice="'+idx+'" '+(ch.cost&&ch.cost>money?'disabled':'')+'><b>'+ch.label+'</b><small>'+ch.hint+(ch.cost?' · '+ch.cost+' €':'')+'</small></button>').join('')+
    '</div>':'';
+ const aao=getAaoPlan(i);
+ const aaoBlock=i.status==='open'&&getAaoSlots(i).length?
+ '<div class="aao"><div class="aaohead"><strong>📟 AAO '+i.t+'</strong><span class="aaostatus">'+aao.assignments.length+'/'+getAaoSlots(i).length+' verfügbar</span></div>'+
+ '<div class="aaolist">'+
+   aao.assignments.map(x=>'<span class="aaoslot ok">✓ '+x.slot+': '+x.vehicle.type+'</span>').join('')+
+   aao.missing.map(x=>'<span class="aaoslot missing">✕ '+x+'</span>').join('')+
+ '</div><button class="aaobutton" id="aaoBtn" '+(!aao.assignments.length?'disabled':'')+'>🚨 AAO alarmieren</button></div>':'';
  return '<span class="code">'+i.t+'</span><h2>'+i.title+'</h2><div class="muted">📍 '+i.address+'</div>'+
  '<div class="riskrow"><span>Gefahrenentwicklung</span><b class="'+riskClass+'">'+Math.round(i.risk)+'%</b></div><div class="riskbar"><div class="riskfill" style="width:'+clamp(i.risk,0,100)+'%"></div></div>'+
+ aaoBlock+
  decision+
  '<div class="section"><strong>Anforderungen</strong><div class="reqs">'+
   Object.entries(i.req).map(([k,n])=>'<div class="req '+((caps[k]||0)>=n?'ok':'')+'"><span>'+cap[k]+'</span><b>'+(caps[k]||0)+' / '+n+'</b></div>').join('')+
@@ -403,6 +545,7 @@ function bindUi(){
  });
  document.querySelectorAll('[data-choice]').forEach(e=>e.onclick=()=>chooseDecision(+e.dataset.choice));
  document.querySelectorAll('[data-upgrade]').forEach(e=>e.onclick=()=>buyUpgrade(e.dataset.upgrade));
+ const aao=document.querySelector('#aaoBtn');if(aao)aao.onclick=alarmAao;
  document.querySelectorAll('[data-speed]').forEach(e=>e.onclick=()=>{speed=+e.dataset.speed;paused=false;render()});
  document.querySelector('#pauseBtn').onclick=()=>{paused=!paused;render()};
  document.querySelector('#resetBtn').onclick=reset;
@@ -440,14 +583,10 @@ function buyUpgrade(id){
 }
 
 function spawnIncident(){
+ if(spawningIncident)return;
  if(incidents.filter(i=>i.status==='open').length>=4){nextIncidentAt=clock+180;return}
- const idx=Math.floor(Math.random()*templates.length);
- const n=make(idx,serial++);
- incidents.push(n);
- selected=n.id;
- rightMode='incident';
  nextIncidentAt=clock+360+Math.floor(Math.random()*240);
- resolveIncidentAddress(n);
+ createRandomIncident(true);
 }
 
 async function fetchRoute(from,to){
@@ -497,19 +636,24 @@ async function planRoute(v,to,status,incident){
  render();
 }
 
-function dispatch(){
- const i=I();if(!i)return;
- const ids=[...chosen];
+function dispatchIds(ids,i,source='Manuell'){
+ let sent=0;
  ids.forEach(id=>{
    const v=vehicles.find(x=>x.id===id);
-   if(v&&v.status==='free'&&reserveCrew(v)){
+   if(v&&v.status==='free'&&crewAvailable(v)&&reserveCrew(v)){
      v.target=i.id;
      planRoute(v,i,'go',i);
+     sent++;
    }
  });
- i.log.push({text:ids.length+' Fahrzeug(e) alarmiert. Straßenrouten werden berechnet.',tone:''});
+ i.log.push({text:source+': '+sent+' Fahrzeug(e) alarmiert. Straßenrouten werden berechnet.',tone:sent?'':'warn'});
  chosen=[];
  render();
+}
+
+function dispatch(){
+ const i=I();if(!i)return;
+ dispatchIds([...chosen],i,'Manuell');
 }
 
 function metersBetween(a,b){
